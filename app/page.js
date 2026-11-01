@@ -32,25 +32,44 @@ function Player({t,a,on,pos,dur}){
       <div className="flex items-center gap-3"><button className="btn" onClick={toggle}>{on?'Pause':'Play'}</button>
       <input type="range" className="!p-0 !border-0 !bg-transparent !w-24" min="0" max="1" step=".05" defaultValue=".8" onChange={e=>{a.current.volume=e.target.value}}/></div></div></div>}
 
+function Intro({bg,leaving,onOpen}){
+  const ps=Array.from({length:22},(_,i)=>({l:(i*37+11)%100,s:2+(i%3),d:11+(i*7)%9,dl:-((i*5)%14),x:((i%5)-2)*18}));
+  const sh={textShadow:'0 2px 18px rgba(40,25,18,.55)'};
+  return <div role="dialog" aria-label="Opening" className="fixed inset-0 z-[60] overflow-hidden text-cream" style={{height:'100dvh',opacity:leaving?0:1,transition:'opacity 1.8s ease-in-out .35s',pointerEvents:leaving?'none':'auto'}}>
+    <div className="absolute inset-0" style={{transform:leaving?'scale(1.12)':'scale(1)',transition:'transform 2.4s ease-in'}}>
+      <div className="absolute inset-0 bg-cover bg-center ia" style={{backgroundImage:`url(${bg})`,animation:'introZoom 26s ease-out forwards, introFade 2.4s ease-out both'}}/></div>
+    <div className="absolute inset-0 bg-cocoa/35"/>
+    <div className="absolute inset-0 bg-cream" style={{opacity:leaving?.5:0,transition:'opacity 1.4s ease-in'}}/>
+    <div className="absolute inset-0 pointer-events-none" aria-hidden="true">{ps.map((p,i)=><span key={i} className="absolute rounded-full bg-cream ip" style={{left:p.l+'%',bottom:'-10px',width:p.s,height:p.s,opacity:0,'--x':p.x+'px',animation:`floatUp ${p.d}s linear ${p.dl}s infinite`}}/>)}</div>
+    <div className="relative h-full flex flex-col items-center justify-center text-center px-7" style={{paddingTop:'env(safe-area-inset-top)',paddingBottom:'env(safe-area-inset-bottom)',opacity:leaving?0:1,transform:leaving?'translateY(-22px)':'none',filter:leaving?'blur(6px)':'none',transition:'all .9s ease-in'}}>
+      <h1 className="font-serif font-light text-[2.7rem] leading-[1.1] sm:text-6xl md:text-7xl max-w-2xl ia" style={{...sh,animation:'introIn 2.4s ease-out .6s both'}}>A Story Worth Remembering</h1>
+      <p className="font-serif italic text-xl sm:text-2xl mt-5 ia" style={{...sh,animation:'introIn 2.2s ease-out 2s both'}}>Some moments are too beautiful to fade away.</p>
+      <button onClick={onOpen} className="btn !bg-cream !text-cocoa mt-10 ia" style={{padding:'.95rem 2.4rem',fontSize:'.95rem',animation:'introIn 2s ease-out 3.2s both'}}>Open Our Memories</button>
+      <p className="mt-5 text-xs tracking-wide opacity-80 ia" style={{...sh,animation:'introIn 2s ease-out 3.8s both'}}>Made with little memories and a lot of love.</p>
+    </div></div>}
+
 export default function Home(){
   const[d,setD]=useState({media:[],tl:[],things:[],s:{}});const[lb,setLb]=useState(null);const[cat,setCat]=useState('All');const[msg,setMsg]=useState(false);
   const a=useRef();const[on,setOn]=useState(false);const[pos,setPos]=useState(0);const[dur,setDur]=useState(0);
   useEffect(()=>{(async()=>{try{const[m,t,l,s]=await Promise.all([supabase.from('media').select('*').order('taken_on'),supabase.from('timeline').select('*').order('event_date'),supabase.from('little_things').select('*').order('created_at'),supabase.from('settings').select('*')]);
     setD({media:m.data||[],tl:t.data||[],things:l.data||[],s:Object.fromEntries((s.data||[]).map(r=>[r.key,r.value]))})}catch{}})()},[]);
   const src=({...TEXT,...Object.fromEntries(Object.entries(d.s).filter(([,v])=>v))}).music_url;
-  useEffect(()=>{const el=a.current;if(!el||!src)return;el.volume=.8;
-    const evs=['pointerdown','click','keydown','touchend'];
-    const off=()=>evs.forEach(e=>removeEventListener(e,start));
-    const start=()=>{el.play().then(off).catch(()=>{})};
-    el.play().catch(()=>evs.forEach(e=>addEventListener(e,start,{passive:true})));
-    return off},[src]);
+  useEffect(()=>{if(a.current)a.current.volume=.8},[src]);
+  const[ph,setPh]=useState('intro');
+  useEffect(()=>{document.body.style.overflow=ph==='intro'?'hidden':'';return()=>{document.body.style.overflow=''}},[ph]);
+  useEffect(()=>{if(ph!=='leaving')return;
+    const go=requestAnimationFrame(()=>{const el=document.getElementById('story');if(el)scrollTo({top:el.getBoundingClientRect().top+scrollY,behavior:'instant'})});
+    const x=setTimeout(()=>setPh('done'),2300);return()=>{cancelAnimationFrame(go);clearTimeout(x)}},[ph]);
+  const enter=()=>{if(ph!=='intro')return;try{a.current&&a.current.play().catch(()=>{})}catch{}setPh('leaving')};
   const t={...TEXT,...Object.fromEntries(Object.entries(d.s).filter(([,v])=>v))};
   const photos=d.media.filter(x=>x.kind==='photo');const P=photos.length?photos:PHOTOS;
   const dv=d.media.filter(x=>x.kind==='video');const videos=(dv.length?dv:VIDEOS).filter(v=>cat==='All'||v.category===cat);
   const tl=d.tl.length?d.tl:TIMELINE;const things=d.things.length?d.things:THINGS;
-  return <main>
-  {t.music_url&&<><audio ref={a} src={t.music_url} autoPlay loop preload="auto" onPlay={()=>setOn(true)} onPause={()=>setOn(false)} onTimeUpdate={e=>setPos(e.target.currentTime)} onLoadedMetadata={e=>setDur(e.target.duration)}/>
-  <button aria-label={on?'Pause music':'Play music'} onClick={()=>{const el=a.current;el.paused?el.play().catch(()=>{}):el.pause()}} className="fixed bottom-5 right-5 z-40 w-12 h-12 rounded-full bg-cocoa/85 text-cream shadow-lg flex items-center justify-center backdrop-blur" style={on?{animation:'spin 8s linear infinite'}:{}}>{on?'♪':'▶'}</button></>}
+  return <>
+  {t.music_url&&<audio ref={a} src={t.music_url} loop preload="auto" onPlay={()=>setOn(true)} onPause={()=>setOn(false)} onTimeUpdate={e=>setPos(e.target.currentTime)} onLoadedMetadata={e=>setDur(e.target.duration)}/>}
+  {ph!=='done'&&<Intro bg={t.hero_bg} leaving={ph==='leaving'} onOpen={enter}/>}
+  {ph!=='intro'&&<main>
+  {t.music_url&&<button aria-label={on?'Pause music':'Play music'} onClick={()=>{const el=a.current;el.paused?el.play().catch(()=>{}):el.pause()}} className="fixed bottom-5 right-5 z-40 w-12 h-12 rounded-full bg-cocoa/85 text-cream shadow-lg flex items-center justify-center backdrop-blur" style={on?{animation:'spin 8s linear infinite'}:{}}>{on?'♪':'▶'}</button>}
   <section className="relative h-screen flex items-center justify-center text-center text-cream bg-cover bg-center" style={{backgroundImage:`url(${t.hero_bg})`}}>
     <div className="absolute inset-0 bg-cocoa/55"/>
     <div className="relative px-6 max-w-2xl">
@@ -91,6 +110,7 @@ export default function Home(){
   <FinalPage bg={t.final_bg}/>
   {lb&&<Lightbox items={P} start={lb.i} auto={lb.auto} onClose={()=>setLb(null)}/>}
   </main>}
+  </>}
 
 function FinalPage({bg}){const[r,v]=useSeen(.3);return <section ref={r} className="relative h-screen flex items-center justify-center text-center text-cream bg-cover bg-center" style={{backgroundImage:`url(${bg})`}}>
   <div className={`absolute inset-0 bg-cocoa transition-opacity duration-[4000ms] ${v?'opacity-70':'opacity-20'}`}/>
