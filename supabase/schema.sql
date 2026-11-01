@@ -1,0 +1,14 @@
+create table media(id uuid primary key default gen_random_uuid(),kind text not null check(kind in('photo','video')),url text not null,path text,title text default '',caption text default '',category text default 'Random Moments',taken_on date default current_date,created_at timestamptz default now());
+create table timeline(id uuid primary key default gen_random_uuid(),event_date date default current_date,title text default '',story text default '',photo_url text,created_at timestamptz default now());
+create table little_things(id uuid primary key default gen_random_uuid(),text text not null,created_at timestamptz default now());
+create table settings(key text primary key,value text);
+alter table media enable row level security; alter table timeline enable row level security; alter table little_things enable row level security; alter table settings enable row level security;
+create policy "read" on media for select using(true); create policy "write" on media for all to authenticated using(true) with check(true);
+create policy "read" on timeline for select using(true); create policy "write" on timeline for all to authenticated using(true) with check(true);
+create policy "read" on little_things for select using(true); create policy "write" on little_things for all to authenticated using(true) with check(true);
+create policy "read" on settings for select using(true); create policy "write" on settings for all to authenticated using(true) with check(true);
+insert into storage.buckets(id,name,public,file_size_limit) values('memories','memories',true,52428800) on conflict do nothing;
+create policy "public read files" on storage.objects for select using(bucket_id='memories');
+create policy "admin upload" on storage.objects for insert to authenticated with check(bucket_id='memories');
+create policy "admin update" on storage.objects for update to authenticated using(bucket_id='memories');
+create policy "admin delete" on storage.objects for delete to authenticated using(bucket_id='memories');
