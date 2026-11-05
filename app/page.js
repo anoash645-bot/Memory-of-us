@@ -107,10 +107,42 @@ export default function Home(){
     <div className="text-center mt-14"><button onClick={()=>setMsg(!msg)} className="text-sm underline underline-offset-4 opacity-60 hover:opacity-100">One More Thing</button>
       <p className={`font-serif italic text-2xl mt-6 max-w-lg mx-auto transition-all duration-1000 ${msg?'opacity-100 max-h-60':'opacity-0 max-h-0 overflow-hidden'}`}>{t.hidden_message}</p></div></section>
 
+  <Anniv t={t}/>
   <FinalPage bg={t.final_bg}/>
   {lb&&<Lightbox items={P} start={lb.i} auto={lb.auto} onClose={()=>setLb(null)}/>}
   </main>}
   </>}
+
+function Anniv({t}){
+  const[now,setNow]=useState(null);const[open,setOpen]=useState(false);const[nope,setNope]=useState(false);const[pv,setPv]=useState(false);
+  useEffect(()=>{setPv(new URLSearchParams(location.search).get('unlock')==='1');setNow(Date.now());const i=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(i)},[]);
+  const target=new Date(t.anniv_date+'T00:00:00').getTime();const since=new Date(t.anniv_since+'T00:00:00').getTime();
+  const left=now==null?null:target-now;const ready=pv||(left!==null&&left<=0);
+  const ref=now==null?target:(left>0?target:now);const days=Math.max(0,Math.floor((ref-since)/864e5));
+  const p2=n=>String(n).padStart(2,'0');
+  const parts=left==null||left<=0?['--','--','--','--']:[Math.floor(left/864e5),p2(Math.floor(left%864e5/36e5)),p2(Math.floor(left%36e5/6e4)),p2(Math.floor(left%6e4/1e3))];
+  const tap=()=>{if(open)return;if(!ready){setNope(true);setTimeout(()=>setNope(false),2200);return}setOpen(true)};
+  const cf=Array.from({length:36},(_,i)=>{const a=i*10*Math.PI/180,r=90+((i*53)%150);return{dx:Math.cos(a)*r,dy:Math.sin(a)*r-70,r:((i*47)%360)-180,c:['♥','✦','•'][i%3],k:['#D9A6A0','#FAF5EC','#E8C9A0'][i%3],z:14+(i*5)%14}});
+  return <section className="py-28 px-6 bg-cocoa text-cream overflow-hidden"><Title k="A little surprise">A Gift For Us</Title>
+    <div className="relative max-w-md mx-auto text-center">
+      <p className="font-serif italic text-xl opacity-80 mb-10">{ready?(open?'Happy anniversary.':'It\'s time. Tap the gift.'):`Our ${t.anniv_label} is on ${fmt(t.anniv_date)}. Come back then to open it.`}</p>
+      {!ready&&<div className="grid grid-cols-4 gap-3 mb-12">{[['Days',parts[0]],['Hours',parts[1]],['Minutes',parts[2]],['Seconds',parts[3]]].map(([l,v])=><div key={l} className="rounded-2xl bg-cream/10 py-4"><div className="font-serif text-3xl sm:text-4xl tabular-nums">{v}</div><div className="text-[10px] tracking-widest uppercase opacity-70 mt-1">{l}</div></div>)}</div>}
+      <div className="relative mx-auto w-40 h-44">
+        <div className="absolute left-1/2 -top-10 w-72 h-72 -translate-x-1/2 rounded-full pointer-events-none transition-opacity duration-[1500ms]" style={{background:'radial-gradient(circle,rgba(250,245,236,.55),transparent 65%)',opacity:open?1:0}}/>
+        <button onClick={tap} aria-label="Open the gift" className="relative block w-40 h-44 outline-none ga" style={{animation:open?'none':nope?'giftShake .6s':'giftFloat 4s ease-in-out infinite',cursor:open?'default':'pointer'}}>
+          <div className="absolute inset-x-0 bottom-0 h-28 rounded-b-xl bg-blush shadow-lg"><div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-8 bg-cream/90"/></div>
+          <div className="absolute -inset-x-1.5 top-3 h-[52px] rounded-md bg-blush shadow-md transition-all duration-[1400ms] ease-out" style={open?{transform:'translateY(-4rem) rotate(-14deg)',opacity:0}:{}}>
+            <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-8 bg-cream/90"/>
+            <div className="absolute -top-5 left-1/2 -translate-x-[130%] w-7 h-7 rounded-full border-[5px] border-cream/90 rotate-[-25deg]"/><div className="absolute -top-5 left-1/2 translate-x-[30%] w-7 h-7 rounded-full border-[5px] border-cream/90 rotate-[25deg]"/></div>
+        </button>
+        {open&&<div className="absolute left-1/2 top-16 pointer-events-none" aria-hidden="true">{cf.map((c,i)=><span key={i} className="absolute gp ga" style={{left:0,top:0,color:c.k,fontSize:c.z,opacity:0,'--dx':c.dx+'px','--dy':c.dy+'px','--r':c.r+'deg',animation:`burst 2.6s ease-out ${(i%6)*.08}s forwards`}}>{c.c}</span>)}</div>}
+      </div>
+      <p className="font-serif italic mt-6 h-6 transition-opacity duration-500" style={{opacity:nope?.85:0}}>Not yet... it opens on {fmt(t.anniv_date)} ♥</p>
+      {open&&<div className="mt-10" style={{animation:'introIn 1.8s ease-out .9s both'}}>
+        <h3 className="font-serif text-4xl">{t.anniv_title}</h3>
+        <p className="font-serif text-xl leading-relaxed mt-6 whitespace-pre-line opacity-90">{t.anniv_message}</p>
+        <div className="mt-10 inline-block rounded-2xl bg-cream/10 px-8 py-5"><div className="font-serif text-5xl tabular-nums">{days}</div><div className="text-[11px] tracking-widest uppercase opacity-70 mt-1">days of us · since {fmt(t.anniv_since)}</div></div></div>}
+    </div></section>}
 
 function FinalPage({bg}){const[r,v]=useSeen(.3);return <section ref={r} className="relative h-screen flex items-center justify-center text-center text-cream bg-cover bg-center" style={{backgroundImage:`url(${bg})`}}>
   <div className={`absolute inset-0 bg-cocoa transition-opacity duration-[4000ms] ${v?'opacity-70':'opacity-20'}`}/>
